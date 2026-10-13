@@ -1,0 +1,25 @@
+# Local dev DB + Linux test runner. Images pinned by digest (node:24-bookworm-slim, postgres:17-alpine).
+services:
+  db:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    environment:
+      POSTGRES_USER: sreops
+      POSTGRES_PASSWORD: sreops
+      POSTGRES_DB: sreops
+    ports: ["127.0.0.1:5432:5432"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "sreops"]
+      interval: 2s
+      retries: 30
+
+  test:
+    image: node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
+    profiles: [test]
+    depends_on:
+      db: {condition: service_healthy}
+    working_dir: /app
+    volumes: [".:/src:ro"]
+    environment:
+      DATABASE_URL: postgres://sreops:sreops@db:5432/sreops
+    # Copy the tree so host node_modules (darwin) never leaks into the Linux run.
+    command: sh -c "cp -r /src/. /app && rm -rf node_modules .next && npm ci --no-audit --no-fund && npm test && npm run typecheck"

@@ -1,0 +1,72 @@
+# Node.js dependencies and diagnostic output
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tsbuildinfo
+
+# Build and test output
+coverage/
+dist/
+build/
+.cache/
+
+# Local agent/runtime state. Plans and reports are committed provenance, not
+# disposable output. Keep explicit placeholders for local-only directories.
+.harness/runs/*
+!.harness/runs/.gitkeep
+.harness/cache/
+.harness/graph-assets/
+.re0/
+
+# Local environment and editor state
+.env
+.env.*
+!.env.example
+.DS_Store
+.idea/
+.vscode/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+*.pem
+
+# debug
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+next-env.d.ts
+!.env.example
+
+# read-only clones the app reads in local mode (npm run repos:sync)
+/.repos/

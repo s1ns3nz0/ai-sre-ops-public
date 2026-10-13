@@ -1,0 +1,36 @@
+# Default checklist per incident role (Google IMAG roles). Copied into an incident when it is declared;
+# a later SEV increase adds the items that newly apply. Editing this file never changes running incidents.
+#
+# phase: when the item should be done
+#   declare  right after declaring   mitigate  before marking mitigated
+#   resolve  before marking resolved close     before closing
+# sev: SEVs the item applies to (omit = all)
+# key: stable id, so a SEV change does not add an item twice
+
+ic:
+  - {key: ic-confirm, phase: declare, text: "Confirm the severity and write the impact in Current status"}
+  - {key: ic-assign, phase: declare, sev: [1, 2], text: "Assign the Ops and Comms leads, or note that you hold them"}
+  - {key: ic-next-update, phase: declare, text: "Set the next status update time"}
+  - {key: ic-rollback, phase: mitigate, sev: [1, 2], text: "Decide rollback or fix forward with the Ops lead and record the decision"}
+  - {key: ic-sli, phase: resolve, text: "Confirm the affected SLIs have been normal for 30 minutes"}
+  - {key: ic-pm-needed, phase: close, sev: [3, 4], text: "Decide whether this incident needs a postmortem"}
+  - {key: ic-pm-owner, phase: close, sev: [1, 2], text: "Hand postmortem ownership to the Planning lead"}
+
+ops:
+  - {key: ops-changes, phase: declare, text: "Check recent changes (open CHGs, Flux reconciles) on the affected components"}
+  - {key: ops-runbook, phase: declare, text: "Open the runbook for each firing alert"}
+  - {key: ops-mitigate, phase: mitigate, text: "Apply the runbook's quick mitigation and post the result as an update"}
+  - {key: ops-decisions, phase: mitigate, text: "Record each mitigation as a decision, with when to revert it"}
+  - {key: ops-verify, phase: resolve, text: "Verify the fix on the dashboard and that the alerts have cleared"}
+  - {key: ops-revert, phase: resolve, text: "Revert temporary mitigations, or schedule the revert"}
+
+comms:
+  - {key: comms-first, phase: declare, sev: [1, 2], text: "Post the first status update"}
+  - {key: comms-cadence, phase: mitigate, sev: [1, 2], text: "Keep updates on cadence (SEV1 every 30 min, SEV2 every hour)"}
+  - {key: comms-all-clear, phase: resolve, sev: [1, 2, 3], text: "Post the all-clear"}
+
+planning:
+  - {key: plan-handoff, phase: declare, sev: [1, 2], text: "Plan a handoff if the incident will outlast this shift"}
+  - {key: plan-followups, phase: mitigate, text: "Note follow-up work as it comes up"}
+  - {key: plan-pm-draft, phase: close, sev: [1, 2], text: "Draft the postmortem with its action items"}
+  - {key: plan-issues, phase: close, sev: [1, 2], text: "Create an issue for every action item"}

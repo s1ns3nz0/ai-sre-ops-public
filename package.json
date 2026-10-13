@@ -1,0 +1,43 @@
+{
+  "name": "ai-sre-ops",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "next typegen && tsc --noEmit",
+    "db:migrate": "node scripts/migrate.ts",
+    "replay": "node scripts/replay.ts",
+    "demo": "node scripts/demo.ts",
+    "flux-demo": "node scripts/flux-demo.ts",
+    "mvp-check": "node scripts/mvp-check.ts",
+    "repos:sync": "for r in lineth-observability lineth-l2-gitops; do [ -d .repos/$r ] || git clone -q https://github.com/s1ns3nz0/$r.git .repos/$r; git -C .repos/$r pull -q --ff-only; done",
+    "test": "node --test 'lib/**/*.test.ts'",
+    "lab:forward": "export KUBECONFIG=$(mktemp); kind get kubeconfig --name lineth-local > $KUBECONFIG; trap 'kill 0' EXIT; for f in 'monitoring svc/monitoring-kube-prometheus-prometheus 9090:9090' 'logging svc/loki 3100:3100' 'kagent svc/kagent-controller 18083:8083' 'ai-sre-ops svc/executor 18090:8090'; do set -- $f; (while true; do kubectl -n $1 port-forward $2 $3 >/dev/null 2>&1; sleep 2; done) & done; echo 'Prometheus :9090, Loki :3100, Kagent :18083, executor :18090 (Ctrl+C stops)'; wait",
+    "demo:seed": "node scripts/demo-seed.ts",
+    "dev:demo": "DEMO=1 next dev"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.1",
+    "next": "16.4.0",
+    "pg": "^8",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "yaml": "^2.9.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^24",
+    "@types/pg": "^8",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

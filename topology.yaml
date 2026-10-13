@@ -1,0 +1,117 @@
+# Lineth topology: components, the k8s workloads behind them, and how they talk.
+# flux: the Flux Kustomization/HelmRelease that deploys the component (change events, PRD F12).
+# when_broken / logs (LogQL) / precedents: the drawer's "what breaks" (PRD F4), on nodes and links.
+# slos: SLOs the component owns (an SLO burn alert is about it). slo_weights: priority score weight, default 1.
+# Edges were seeded from service URLs in lineth-l2-gitops/apps (configs, env, args); links with no URL
+# (shared volume, databases folded into their owner) were added by hand. First cut of PRD F3; moves to
+# lineth-observability later. Positions are fixed on a 1200 x 780 canvas (node centers).
+
+# Priority score (PRD F8): how much an SLO's burn counts. Unlisted SLOs weigh 1.
+slo_weights: {block-production: 3, rpc-availability: 3, settlement-freshness: 2}
+
+groups:
+  - {id: execution,  label: Execution,             x: 20,  y: 20,  w: 600, h: 330}
+  - {id: settlement, label: Proving & settlement,  x: 640, y: 20,  w: 540, h: 330}
+  - {id: messaging,  label: Messaging,             x: 20,  y: 370, w: 280, h: 160}
+  - {id: signing,    label: Signing,               x: 320, y: 370, w: 300, h: 160}
+  - {id: periphery,  label: Traffic & explorer,    x: 640, y: 370, w: 540, h: 160}
+  - {id: l1,         label: L1 chain,              x: 20,  y: 560, w: 1160, h: 200}
+
+nodes:
+  - {id: maru, label: maru, role: consensus client, group: execution, flux: [lineth-l2-execution], x: 120, y: 110,
+     when_broken: {symptoms: "old gen heap near max, long GC pauses; engine API calls stop",
+                   impact: "the sequencer stops producing blocks; RPC nodes stop importing"},
+     logs: ['{namespace="lineth-l2", pod=~"maru-.*"} |~ "(?i)outofmemory|gc|engine"'],
+     precedents: [INC-2026-10-11-10],
+     workloads: [{ns: lineth-l2, kind: StatefulSet, name: maru}],
+     alerts: [LinethL2MaruHeapNearlyFull], dashboard: lineth-local-l2-maru-runtime}
+  - {id: sequencer, label: sequencer, role: block producer, group: execution, flux: [lineth-l2-execution], slos: [block-production, tx-inclusion-5s, tx-inclusion-60s], x: 330, y: 110,
+     when_broken: {symptoms: "no new L2 blocks; head age grows",
+                   impact: "user txs are not included; block-production and tx-inclusion SLOs burn"},
+     logs: ['{namespace="lineth-l2", pod=~"sequencer-.*"} |~ "(?i)error|engine"'],
+     precedents: [INC-2026-10-11-10],
+     workloads: [{ns: lineth-l2, kind: StatefulSet, name: sequencer}],
+     alerts: [LinethL2SequencerStalled, LinethL2NoPeers], dashboard: lineth-local-l2-sequencer-runtime}
+  - {id: tx-exclusion, label: tx exclusion, role: rejected-tx API, group: execution, flux: [lineth-l2-exclusion], x: 530, y: 110,
+     workloads: [{ns: lineth-l2, kind: Deployment, name: transaction-exclusion-api}, {ns: lineth-l2, kind: StatefulSet, name: tea-postgres}]}
+  - {id: l2-node-besu, label: l2-node-besu, role: public RPC, group: execution, flux: [lineth-l2-execution], slos: [rpc-availability, rpc-server-errors], x: 330, y: 270,
+     workloads: [{ns: lineth-l2, kind: StatefulSet, name: l2-node-besu}],
+     alerts: [LinethL2RpcNodeLagging, LinethL2RpcTxStuck], dashboard: lineth-local-l2-rpc-besu-runtime}
+  - {id: shomei, label: shomei, role: state manager, group: execution, flux: [lineth-l2-execution], x: 530, y: 270,
+     workloads: [{ns: lineth-l2, kind: StatefulSet, name: shomei}],
+     alerts: [LinethL2ShomeiLagging], dashboard: lineth-local-l2-shomei-runtime}
+
+  - {id: coordinator, label: coordinator, role: conflation & submission, group: settlement, flux: [lineth-l2-settlement], slos: [settlement-freshness, withdrawal-1h], x: 790, y: 185,
+     when_broken: {symptoms: "finalization on L1 stalls; blob submission or conflation stops",
+                   impact: "L2 blocks are not finalized on L1; withdrawals and settlement SLOs burn"},
+     logs: ['{namespace="lineth-l2", pod=~"coordinator-.*"} |~ "(?i)backpressure|error"'],
+     precedents: [INC-2026-10-11-11],
+     workloads: [{ns: lineth-l2, kind: Deployment, name: coordinator}, {ns: lineth-l2, kind: StatefulSet, name: coordinator-postgres}],
+     alerts: [LinethL2FinalizationStalled, LinethL2BlobSubmissionStalled, LinethL2L1FinalityGap, LinethL2DbBackupStale, LinethL2WorkflowStuck],
+     dashboard: lineth-local-l2-coordinator-runtime}
+  - {id: prover, label: prover, role: zk proofs, group: settlement, flux: [lineth-l2-proving], x: 1060, y: 185,
+     when_broken: {symptoms: "proof requests pile up; pod OOMKilled and restarting; batches parked as .large",
+                   impact: "no new proofs, so L2 → L1 finalization stops; withdrawals cannot be claimed"},
+     logs: ['{namespace="lineth-l2", pod=~"prover-.*"} |~ "(?i)oom|killed|large"'],
+     precedents: [INC-2026-10-11-11],
+     workloads: [{ns: lineth-l2, kind: Deployment, name: prover}],
+     alerts: [LinethL2ProverBacklog, LinethL2ProverFailures, LinethL2ProverLargeRetry], dashboard: lineth-local-l2-prover-runtime}
+
+  - {id: postman, label: postman, role: L1↔L2 messages, group: messaging, flux: [lineth-l2-messaging], slos: [deposit-10m, deposit-2m], x: 160, y: 460,
+     workloads: [{ns: lineth-l2, kind: Deployment, name: postman}, {ns: lineth-l2, kind: StatefulSet, name: postman-postgres}],
+     alerts: [LinethL2MessagesStuck, LinethL2MessagesNeedAttention], dashboard: lineth-local-l2-postman-runtime}
+
+  - {id: web3signer-l2, label: web3signer, role: L2 signing keys, group: signing, flux: [lineth-l2-signing], x: 470, y: 460,
+     workloads: [{ns: lineth-l2, kind: Deployment, name: web3signer}],
+     alerts: [LinethL2SignerKeysMissing], dashboard: lineth-local-l2-web3signer-runtime}
+
+  - {id: traffic, label: traffic, role: synthetic users, group: periphery, flux: [lineth-l2-traffic], x: 730, y: 460,
+     workloads: [{ns: lineth-l2, kind: Deployment, name: l2-traffic}, {ns: lineth-l2, kind: Deployment, name: l2-load}, {ns: lineth-l2, kind: Deployment, name: l2-users}],
+     alerts: [LinethL2LivenessTxMissing, LinethL2LoadGeneratorStalled]}
+  - {id: blockscout, label: blockscout, role: explorer, group: periphery, flux: [lineth-l2-explorer], x: 910, y: 460,
+     workloads: [{ns: lineth-l2, kind: Deployment, name: blockscout}, {ns: lineth-l2, kind: Deployment, name: blockscout-frontend}, {ns: lineth-l2, kind: StatefulSet, name: blockscout-postgres}]}
+  - {id: observability, label: exporters, role: metrics & traces, group: periphery, flux: [lineth-l2-observability], x: 1090, y: 460,
+     workloads: [{ns: lineth-l2, kind: Deployment, name: l2-exporter}, {ns: lineth-l2, kind: Deployment, name: workflow-tracer}],
+     alerts: [LinethL2ScrapeFailed, LinethL2ExporterStale]}
+
+  - {id: web3signer-l1, label: web3signer, role: validator keys, group: l1, flux: [local-l1-nodes], x: 1090, y: 665,
+     workloads: [{ns: local-l1, kind: Deployment, name: web3signer}, {ns: local-l1, kind: StatefulSet, name: web3signer-postgres}], dashboard: lineth-web3signer-runtime}
+  - {id: teku-validator, label: teku-validator, role: validator, group: l1, flux: [local-l1-nodes], x: 870, y: 665,
+     workloads: [{ns: local-l1, kind: StatefulSet, name: teku-validator}], dashboard: lineth-teku-validator-runtime}
+  - {id: teku, label: teku, role: L1 consensus, group: l1, flux: [local-l1-nodes], x: 640, y: 665,
+     workloads: [{ns: local-l1, kind: StatefulSet, name: teku}], dashboard: lineth-teku-beacon-runtime}
+  - {id: besu-l1, label: besu, role: L1 execution, group: l1, flux: [local-l1-nodes], x: 400, y: 665,
+     workloads: [{ns: local-l1, kind: StatefulSet, name: besu}], dashboard: lineth-besu-runtime}
+
+# via: rpc (JSON-RPC 8545) | ws | engine (Engine API) | signing | state | http | file
+edges:
+  - {from: maru, to: sequencer, via: engine, port: 8550, note: drives block production,
+     when_broken: {symptoms: "no engine_forkchoiceUpdated calls; sequencer idle",
+                   impact: "block production stops"},
+     logs: ['{namespace="lineth-l2", pod=~"maru-.*"} |~ "(?i)engine|forkchoice"'],
+     precedents: [INC-2026-10-11-10]}
+  - {from: maru, to: l2-node-besu, via: engine, port: 8550, note: imports blocks}
+  - {from: maru, to: besu-l1, via: rpc, port: 8545, note: reads L1 contracts}
+  - {from: l2-node-besu, to: sequencer, via: rpc, port: 8545, note: forwards user txs}
+  - {from: l2-node-besu, to: shomei, via: state, port: 8888, note: trie logs}
+  - {from: sequencer, to: tx-exclusion, via: http, port: 8080, note: reports rejected txs}
+  - {from: l2-node-besu, to: tx-exclusion, via: http, port: 8080, note: reports rejected txs}
+  - {from: sequencer, to: web3signer-l2, via: signing, port: 9000, note: signs blocks}
+  - {from: coordinator, to: l2-node-besu, via: rpc, port: 8545, note: reads L2 blocks}
+  - {from: coordinator, to: shomei, via: state, port: 8888, note: state proofs}
+  - {from: coordinator, to: prover, via: file, note: proof requests and responses on a shared volume,
+     when_broken: {symptoms: "requests wait in the shared volume; no responses; coordinator logs backpressure",
+                   impact: "conflated batches are not proven, so finalization on L1 stops"},
+     logs: ['{namespace="lineth-l2", pod=~"coordinator-.*"} |= "backpressure"', '{namespace="lineth-l2", pod=~"prover-.*"} |~ "(?i)oom|large"'],
+     precedents: [INC-2026-10-11-11]}
+  - {from: coordinator, to: web3signer-l2, via: signing, port: 9000, note: signs L1 txs}
+  - {from: coordinator, to: besu-l1, via: rpc, port: 8545, note: submits blobs and finalization}
+  - {from: postman, to: l2-node-besu, via: rpc, port: 8545, note: claims L1→L2 messages}
+  - {from: postman, to: besu-l1, via: rpc, port: 8545, note: claims L2→L1 messages}
+  - {from: traffic, to: l2-node-besu, via: rpc, port: 8545, note: user txs}
+  - {from: traffic, to: besu-l1, via: rpc, port: 8545, note: deposits}
+  - {from: blockscout, to: l2-node-besu, via: ws, port: 8546, note: indexes blocks}
+  - {from: observability, to: l2-node-besu, via: rpc, port: 8545, note: probes}
+  - {from: teku, to: besu-l1, via: engine, port: 8551, note: drives L1 blocks}
+  - {from: teku-validator, to: teku, via: http, port: 4000, note: beacon API}
+  - {from: teku-validator, to: web3signer-l1, via: signing, port: 9000, note: signs attestations}

@@ -1,0 +1,22 @@
+{
+  "source": "lineth-l2-gitops docs/postmortems/PM-2026-10-11-11-finalization-halt.md §4 and docs/incident-log.md (INC-10, INC-11)",
+  "note": "Firing times are from the postmortem/incident log. Resolve times marked approx are estimated from the recovery timeline (exact Alertmanager resolve times were not recorded). INC-10 (maru heap OOM) overlapped INC-11 and is included on purpose. Grouping by Alertmanager groupKey (today) merges both incidents' SLOBurnRatePage alerts and splits INC-11 into several candidates; catalog grouping (PRD F8) must keep INC-10 and INC-11 apart and each in one candidate.",
+  "events": [
+    { "incident": "INC-11", "alertname": "LinethL2SLOBurnRatePage", "severity": "critical", "labels": { "slo": "settlement-freshness", "burn_rate": "14.4", "window": "1h" },
+      "summary": "SLO settlement-freshness (99%) burning its error budget 14.4x over 1h", "startsAt": "2026-10-11T16:10:00Z", "endsAt": "2026-10-12T16:10:00Z", "endsApprox": true },
+    { "incident": "INC-11", "alertname": "LinethL2FinalizationStalled", "severity": "critical", "labels": {},
+      "summary": "No L2 finalization reached L1 for 20 minutes", "startsAt": "2026-10-11T17:57:00Z", "endsAt": "2026-10-12T15:05:00Z", "endsApprox": true },
+    { "incident": "INC-11", "alertname": "LinethL2ProverLargeRetry", "severity": "warning", "labels": {},
+      "summary": "Prover request waiting for a large-mode retry", "startsAt": "2026-10-11T17:57:00Z", "endsAt": "2026-10-12T15:03:00Z", "endsApprox": true },
+    { "incident": "INC-10", "alertname": "LinethL2ScrapeFailed", "severity": "critical", "labels": { "target": "l2-maru", "job": "l2-maru", "instance": "maru.lineth-l2.svc.cluster.local:9090" },
+      "summary": "L2 metrics scrape failed", "startsAt": "2026-10-11T19:40:14Z", "endsAt": "2026-10-12T00:31:00Z", "endsApprox": true },
+    { "incident": "INC-10", "alertname": "LinethL2SLOBurnRatePage", "severity": "critical", "labels": { "slo": "block-production", "burn_rate": "14.4", "window": "1h" },
+      "summary": "SLO block-production (99.5%) burning its error budget 14.4x over 1h", "startsAt": "2026-10-11T19:58:00Z", "endsAt": "2026-10-12T01:30:00Z", "endsApprox": true, "startsApprox": true },
+    { "incident": "INC-10", "alertname": "LinethL2SequencerStalled", "severity": "critical", "labels": {},
+      "summary": "L2 sequencer stopped producing blocks", "startsAt": "2026-10-11T19:59:44Z", "endsAt": "2026-10-12T00:31:00Z", "endsApprox": true },
+    { "incident": "INC-10", "alertname": "LinethL2RpcTxStuck", "severity": "warning", "labels": {},
+      "summary": "A user tx has been stuck in the public RPC node pool for over 2 minutes", "startsAt": "2026-10-11T20:01:59Z", "endsAt": "2026-10-12T00:35:00Z", "endsApprox": true },
+    { "incident": "INC-11", "alertname": "LinethL2WorkflowStuck", "severity": "warning", "labels": { "workflow": "withdrawal", "stage": "finalization.wait" },
+      "summary": "A withdrawal workflow is stuck in stage finalization.wait", "startsAt": "2026-10-12T01:00:00Z", "endsAt": "2026-10-12T15:10:00Z", "endsApprox": true }
+  ]
+}

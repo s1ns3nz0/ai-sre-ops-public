@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+/* Cool neutral canvas; color is reserved for severity and state. */
+:root {
+  --canvas: #f5f6f8;
+  --surface: #ffffff;
+  --ink: #15171c;
+  --sub: #5a6170;
+  --line: #e2e5ea;
+  --sev1: #d92d20;
+  --sev2: #e8590c;
+  --sev3: #c48a06;
+  --sev4: #9aa1ad;
+  --link: #3b6fd8; /* topology links: a hue no status uses */
+  --bar: #1f2329; /* the clock strip: graphite, the same family as --ink */
+  --accent: #7cc4fa; /* on dark: clock digits, active nav, primary action on dark callouts */
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-sub: var(--sub);
+  --color-line: var(--line);
+  --color-sev1: var(--sev1);
+  --color-sev2: var(--sev2);
+  --color-sev3: var(--sev3);
+  --color-sev4: var(--sev4);
+  --color-bar: var(--bar);
+  --color-accent: var(--accent);
+  /* legacy names used by a few components */
+  --color-background: var(--surface);
+  --color-foreground: var(--ink);
+  --color-muted: var(--sub);
+  --color-panel: var(--canvas);
+  --color-border: var(--line);
+  --font-sans: var(--font-plex), ui-sans-serif, system-ui, "Apple SD Gothic Neo", sans-serif;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* Topology: dashes march along a link in the direction data flows (one dash + gap = 11). */
+.flow { animation: flow 1.2s linear infinite; }
+@keyframes flow { to { stroke-dashoffset: -11; } }
+@keyframes slidein { from { transform: translateX(16px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .flow { animation: none; } }

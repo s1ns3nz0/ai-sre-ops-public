@@ -1,0 +1,6 @@
+# On-call shifts (PRD F5), UTC hours, covering the whole day with no gap. roster: who takes the shift; one operator
+# today, so the same person on every shift. Adding a second person is one more name in a roster.
+shifts:
+  - {id: apac, name: APAC, start: 0, end: 8, roster: [s1ns3nz0]}
+  - {id: eu, name: EU, start: 8, end: 16, roster: [s1ns3nz0]}
+  - {id: us, name: US, start: 16, end: 24, roster: [s1ns3nz0]}
