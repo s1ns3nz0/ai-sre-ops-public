@@ -3,7 +3,7 @@
 An incident console for an L2 rollup lab (Lineth L2): alerts become incidents, an AI agent briefs the incident
 commander with the next runbook steps, shifts hand over with one picture, and postmortems close the loop.
 
-**Live demo (sample data):** http://193.122.146.187/sre — the AI is limited to 5 requests per visitor per day.
+**Live demo (sample data):** https://ops.miata.cloud/sre — the AI is limited to 5 requests per visitor per day.
 
 ## Overview
 
